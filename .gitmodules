@@ -1,0 +1,3 @@
+[submodule "ATmega32u4_libraries"]
+	path = ATmega32u4_libraries
+	url = https://github.com/m-fudala/ATmega32u4_libraries
