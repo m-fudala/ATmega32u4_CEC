@@ -17,6 +17,8 @@ int main()
 
     unsigned char uart_rx_buffer[8];
 
+    cec_init();
+
     while (1) {
         if (!check_message_readiness()) {
             uart_read(uart_rx_buffer, 8);
@@ -51,6 +53,9 @@ int main()
 
             case SND: {
                 unsigned char send_ok[5] = "snd\r\n";
+
+                send_start();
+
                 uart_send(send_ok,
                         sizeof(send_ok) / sizeof(unsigned char) - 1);
 
