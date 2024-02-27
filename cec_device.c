@@ -52,7 +52,7 @@ int main()
             }
 
             case SND: {
-                unsigned char send_ok[5] = "snd\r\n";
+                unsigned char send_ok[6] = "snd\r\n";
 
                 send_start();
 
