@@ -54,7 +54,7 @@ int main()
             case SND: {
                 unsigned char send_ok[6] = "snd\r\n";
 
-                send_start();
+                send_byte(0x0F);
 
                 uart_send(send_ok,
                         sizeof(send_ok) / sizeof(unsigned char) - 1);

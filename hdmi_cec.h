@@ -18,12 +18,14 @@
 #define ZERO_LOW_TIME 3000
 #define BIT_HIGH_TIME 4800
 
+volatile unsigned char bit_sent;
+
 void cec_init();
 
 void send_start();
 
-void send_0();
+void send_bit(unsigned char bit);
 
-void send_1();
+void send_byte(unsigned char byte);
 
 #endif
