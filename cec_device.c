@@ -6,8 +6,14 @@
 */
 
 #include "ATmega32u4_libraries/uart_library/uart.h"
+#include "ATmega32u4_libraries/external_interrupt_library/external_interrupt.h"
+#include "ATmega32u4_libraries/gpio_library/gpio.h"
 #include "serial_commands.h"
 #include "hdmi_cec.h"
+
+
+void button_press();
+volatile unsigned char send_message = 0;
 
 int main()
 {
@@ -19,7 +25,19 @@ int main()
 
     cec_init();
 
+    // init interrupt 2
+    Pin Button;
+    pin_init(&Button, &PORTD, PD1, INPUT);
+    int_init(INT1, button_press, FALLING_EDGE);
+    int_enable(INT1);
+
     while (1) {
+        if (send_message) {
+            send_message = 0;
+            
+            send_byte(0x0F);
+        }
+
         if (!check_message_readiness()) {
             uart_read(uart_rx_buffer, 8);
             unsigned char selected_command = 0;
@@ -66,4 +84,8 @@ int main()
     }
 
     return 0;
+}
+
+void button_press() {
+    send_message = 1;
 }
