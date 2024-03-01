@@ -46,6 +46,8 @@ int main()
                     sizeof(send_ok) / sizeof(unsigned char) - 1);
 
             uart_send((unsigned char *)Rx.buffer, Rx.status.bytes_read);
+
+            Rx.status.message_ended = 0;
         }
 
         if (!check_message_readiness()) {
