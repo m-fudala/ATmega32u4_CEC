@@ -14,7 +14,7 @@ void cec_init() {
     TIMSK1 |= _BV(OCIE1A) | _BV(OCIE1B);
 
     // init interrupt 6
-    int_init(INT6, bus_interrupt_handler, FALLING_EDGE);
+    int_init(INT6, bus_interrupt_handler, ANY_EDGE);
     int_enable(INT6);
 
     sei();
@@ -49,6 +49,8 @@ void send_start() {
     TCCR1B |= _BV(CS11);
 
     pin_write(&CEC_bus, LOW);
+
+    while (!CEC_status.bit_sent);
 }
 
 void send_bit(unsigned char bit) {
@@ -66,37 +68,45 @@ void send_bit(unsigned char bit) {
     TCCR1B |= _BV(CS11);
 
     pin_write(&CEC_bus, LOW);
+
+    while (!CEC_status.bit_sent);
 }
 
-void send_byte(unsigned char byte) {
+void insert_EOM(unsigned char message_complete) {
+    send_bit(message_complete);
+}
+
+void wait_for_ack() {
+    send_bit(1);
+
+    // wait for ACK
+}
+
+void send_bytes(unsigned char *message, unsigned char no_of_bytes) {
     send_start();
 
-    while (!CEC_status.bit_sent);
+    for (unsigned char byte_id = 0; byte_id < no_of_bytes; ++byte_id) {
+        for (unsigned char bit_id = 0; bit_id < 8; ++bit_id) {
+            send_bit((message[byte_id] & (0x80 >> bit_id)) >> (7 - bit_id));
 
-    for (unsigned char bit_id = 0; bit_id < 8; ++bit_id) {
-        send_bit((byte & (0x80 >> bit_id)) >> (7 - bit_id));
+            if (bit_id == 7) {
+                insert_EOM(byte_id == no_of_bytes - 1);
 
-        while (!CEC_status.bit_sent);
-    }
-
-    send_bit(1);
-
-    while (!CEC_status.bit_sent);
-
-    send_bit(1);
-
-    while (!CEC_status.bit_sent);
+                wait_for_ack();
+            }
+        }
+    }    
 }
 
 void bus_interrupt_handler() {
 
 }
 
-ISR (TIMER1_COMPA_vect) {
+ISR (TIMER1_COMPA_vect) {   // counting until time the bus should go high again
     pin_write(&CEC_bus, HIGH);
 }
 
-ISR (TIMER1_COMPB_vect) {
+ISR (TIMER1_COMPB_vect) {   // counting until start/bit ends 
     TCCR1B &= ~_BV(CS11);
 
     CEC_status.bit_sent = 1;

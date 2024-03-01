@@ -34,8 +34,9 @@ int main()
     while (1) {
         if (send_message) {
             send_message = 0;
-            
-            send_byte(0x0F);
+
+            // send_bytes((unsigned char[1]){0x0F}, 1);
+            send_bytes((unsigned char[3]){0x40, 0x9E, 0x04}, 3);
         }
 
         if (!check_message_readiness()) {
@@ -72,7 +73,7 @@ int main()
             case SND: {
                 unsigned char send_ok[6] = "snd\r\n";
 
-                send_byte(0x0F);
+                send_bytes((unsigned char[1]){0x0F}, 1);
 
                 uart_send(send_ok,
                         sizeof(send_ok) / sizeof(unsigned char) - 1);
