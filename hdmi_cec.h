@@ -14,10 +14,10 @@
 #include "ATmega32u4_libraries/external_interrupt_library/external_interrupt.h"
 
 #define START_LOW_TIME 7400     // 3.7 ms
-#define START_TIME 9000    // 4.5 ms
+#define START_TIME 9000         // 4.5 ms
 #define ONE_LOW_TIME 1200       // 0.6 ms
 #define ZERO_LOW_TIME 3000      // 1.5 ms
-#define BIT_TIME 4800      // 2.4 ms
+#define BIT_TIME 4800           // 2.4 ms
 #define WAIT_FOR_ACK 3400       // 1.7 ms
 #define TOLERANCE 400           // 0.4 ms
 
@@ -31,12 +31,18 @@ enum CEC_direction {
     FOLLOWER
 };
 
-typedef struct CEC {
-    volatile unsigned char bit_sent : 1;
-    volatile unsigned char bus_direction : 1; 
-} CEC;
+typedef struct CEC_Tx {
+    volatile unsigned char *bytes;
+    volatile unsigned char no_of_bytes;
 
-CEC CEC_status;
+    struct {
+        volatile unsigned char bus_direction : 1;
+        volatile unsigned char bytes_sent : 4;
+        volatile unsigned char bits_sent : 4;
+    } status;
+} CEC_Tx;
+
+CEC_Tx Tx;
 
 typedef struct CEC_Rx {
     volatile unsigned char buffer[CEC_RX_BUFFER_SIZE];
@@ -59,12 +65,6 @@ void set_initiator();
 void set_follower();
 
 void send_start();
-
-void send_bit(unsigned char bit);
-
-void insert_EOM(unsigned char message_complete);
-
-void wait_for_ack();
 
 void send_bytes(unsigned char *message, unsigned char no_of_bytes);
 

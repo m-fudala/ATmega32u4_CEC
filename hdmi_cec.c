@@ -1,13 +1,11 @@
 #include "hdmi_cec.h"
 
 void cec_init() {
-    CEC_status.bit_sent = 1;
-
     cli();
 
     // init pin
     pin_init(&CEC_bus, &PORTE, PE6, INPUT);
-    CEC_status.bus_direction = FOLLOWER;
+    Tx.status.bus_direction = FOLLOWER;
 
     pin_init(&debug, &PORTC, PC6, OUTPUT);
 
@@ -30,12 +28,12 @@ void set_initiator() {
 
     pin_set_direction(&CEC_bus, OUTPUT);
 
-    CEC_status.bus_direction = INITIATOR;
+    Tx.status.bus_direction = INITIATOR;
 }
 
 void set_follower() {
     pin_set_direction(&CEC_bus, INPUT);
-    CEC_status.bus_direction = FOLLOWER;
+    Tx.status.bus_direction = FOLLOWER;
 
     int_enable(INT6);
 }
@@ -46,66 +44,70 @@ void send_start() {
     OCR1A = START_LOW_TIME;
     OCR1B = START_TIME;
 
-    CEC_status.bit_sent = 0;
-
     TCNT1 = 0;
     TCCR1B |= _BV(CS11);
 
     pin_write(&CEC_bus, LOW);
-
-    while (!CEC_status.bit_sent);
 }
 
-void send_bit(unsigned char bit) {
-    if (bit) {
+void send_bytes(unsigned char *message, unsigned char no_of_bytes) {
+    Tx.bytes = message;
+    Tx.no_of_bytes = no_of_bytes;
+    
+    send_start();   
+}
+
+ISR (TIMER1_COMPA_vect) {   // counting time until the bus should go high again
+    pin_write(&CEC_bus, HIGH);
+}
+
+ISR (TIMER1_COMPB_vect) {   // counting until start/bit ends
+    if ((Tx.status.bytes_sent == 0) && (Tx.status.bits_sent == 0)) {
+        OCR1B = BIT_TIME;
+    }
+
+    // data bits
+    if ((Tx.bytes[Tx.status.bytes_sent] & (0x80 >> Tx.status.bits_sent)) &&
+            (Tx.status.bits_sent < 8)) {
         OCR1A = ONE_LOW_TIME;
     } else {
         OCR1A = ZERO_LOW_TIME;
     }
 
-    OCR1B = BIT_TIME;
+    // eom bit
+    if (Tx.status.bits_sent == 8) {
+        ++Tx.status.bytes_sent;
 
-    CEC_status.bit_sent = 0;
-
-    TCNT1 = 0;
-    TCCR1B |= _BV(CS11);
-
-    pin_write(&CEC_bus, LOW);
-
-    while (!CEC_status.bit_sent);
-}
-
-void insert_EOM(unsigned char message_complete) {
-    send_bit(message_complete);
-}
-
-void wait_for_ack() {
-    send_bit(1);
-
-    // wait for ACK
-    set_follower();
-
-    while(!Rx.status.ack_detected);
-
-    set_initiator();
-}
-
-void send_bytes(unsigned char *message, unsigned char no_of_bytes) {
-    send_start();
-
-    for (unsigned char byte_id = 0; byte_id < no_of_bytes; ++byte_id) {
-        Rx.status.ack_detected = 0;
-
-        for (unsigned char bit_id = 0; bit_id < 8; ++bit_id) {
-            send_bit((message[byte_id] & (0x80 >> bit_id)) >> (7 - bit_id));
-
-            if (bit_id == 7) {
-                insert_EOM(byte_id == (no_of_bytes - 1));
-
-                wait_for_ack();
-            }
+        if (Tx.status.bytes_sent == Tx.no_of_bytes) {
+            OCR1A = ONE_LOW_TIME;
+        } else {
+            OCR1A = ZERO_LOW_TIME;
         }
-    }    
+    }
+
+    // ack bit
+    if (Tx.status.bits_sent == 9) {
+        OCR1A = ZERO_LOW_TIME;
+    }
+
+    if (Tx.status.bits_sent < 10) {
+        ++Tx.status.bits_sent;
+
+        TCNT1 = 0;
+
+        pin_write(&CEC_bus, LOW);
+    }
+
+    if (Tx.status.bits_sent == 10) {
+        Tx.status.bits_sent = 0;
+
+        if (Tx.status.bytes_sent == Tx.no_of_bytes) {
+            TCNT1 = 0;
+            TCCR1B &= ~_BV(CS11);
+
+            Tx.status.bytes_sent = 0;
+        }
+    }
 }
 
 void send_ack() {
@@ -182,14 +184,4 @@ void bus_interrupt_handler() {
             break;
         }
     }
-}
-
-ISR (TIMER1_COMPA_vect) {   // counting time until the bus should go high again
-    pin_write(&CEC_bus, HIGH);
-}
-
-ISR (TIMER1_COMPB_vect) {   // counting until start/bit ends
-    TCCR1B &= ~_BV(CS11);
-
-    CEC_status.bit_sent = 1;
 }
