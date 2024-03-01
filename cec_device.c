@@ -39,6 +39,15 @@ int main()
             send_bytes((unsigned char[3]){0x40, 0x9E, 0x04}, 3);
         }
 
+        if (Rx.status.message_ended) {
+            unsigned char send_ok[5] = "OK\r\n";
+
+            uart_send(send_ok,
+                    sizeof(send_ok) / sizeof(unsigned char) - 1);
+
+            uart_send((unsigned char *)Rx.buffer, Rx.status.bytes_read);
+        }
+
         if (!check_message_readiness()) {
             uart_read(uart_rx_buffer, 8);
             unsigned char selected_command = 0;

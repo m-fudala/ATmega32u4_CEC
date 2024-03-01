@@ -41,9 +41,10 @@ typedef struct CEC_Rx {
     volatile unsigned char buffer[CEC_RX_BUFFER_SIZE];
 
     struct {
+        volatile unsigned char start_detected : 1;
         volatile unsigned char bytes_read : 4;
         volatile unsigned char current_bit : 4;
-        volatile unsigned char start_detected : 1;
+        volatile unsigned char message_ended : 1;
     } status;
 } CEC_Rx;
 

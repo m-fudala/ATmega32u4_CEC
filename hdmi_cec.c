@@ -2,12 +2,12 @@
 
 void cec_init() {
     CEC_status.bit_sent = 1;
-    CEC_status.bus_direction = FOLLOWER;
 
     cli();
 
     // init pin
     pin_init(&CEC_bus, &PORTE, PE6, INPUT);
+    CEC_status.bus_direction = FOLLOWER;
 
     // init timer 1
     TIMSK1 |= _BV(OCIE1A) | _BV(OCIE1B);
@@ -30,10 +30,9 @@ void set_initiator() {
 
 void set_follower() {
     pin_set_direction(&CEC_bus, INPUT);
+    CEC_status.bus_direction = FOLLOWER;
 
     int_enable(INT6);
-
-    CEC_status.bus_direction = FOLLOWER;
 }
 
 void send_start() {
@@ -106,10 +105,10 @@ void send_ack() {
 }
 
 void bus_interrupt_handler() {
-    TCCR1B |= _BV(CS11);
-
     switch (pin_read(&CEC_bus)) {
         case LOW: {
+            TCCR1B |= _BV(CS11);
+
             if (Rx.status.current_bit == 8) {
                 send_ack();
             } else {
@@ -123,20 +122,29 @@ void bus_interrupt_handler() {
             if ((TCNT1 > START_LOW_TIME - TOLERANCE) &&
                     (TCNT1 < START_LOW_TIME + TOLERANCE)) {
                 Rx.status.start_detected = 1;
-                return;
+                Rx.status.message_ended = 0;
+
+                break;
             } else if ((TCNT1 > ONE_LOW_TIME - TOLERANCE) &&
                     (TCNT1 < ONE_LOW_TIME + TOLERANCE)) {
-                if (Rx.status.start_detected && (Rx.status.current_bit < 8)) {
-                    Rx.buffer[Rx.status.bytes_read] | (0x80 >> Rx.status.current_bit);
+                if (Rx.status.start_detected) {
+                    if (Rx.status.current_bit < 8) {
+                        Rx.buffer[Rx.status.bytes_read] |
+                            (0x80 >> Rx.status.current_bit);
+                    } else {
+                        Rx.status.message_ended = 1;
+                        TCCR1B &= ~_BV(CS11);
+                    }
                 }
             } else if ((TCNT1 > ZERO_LOW_TIME - TOLERANCE) &&
                     (TCNT1 < ZERO_LOW_TIME + TOLERANCE)) {
                 if (Rx.status.start_detected  && (Rx.status.current_bit < 8)) {
-                    Rx.buffer[Rx.status.bytes_read] & ~(0x80 >> Rx.status.current_bit);
+                    Rx.buffer[Rx.status.bytes_read] &
+                        ~(0x80 >> Rx.status.current_bit);
                 }
             } else {
                 Rx.status.start_detected = 0;
-                return;
+                break;
             }
 
             if (Rx.status.current_bit == 7) {
@@ -153,7 +161,7 @@ void bus_interrupt_handler() {
     }
 }
 
-ISR (TIMER1_COMPA_vect) {   // counting until time the bus should go high again
+ISR (TIMER1_COMPA_vect) {   // counting time until the bus should go high again
     pin_write(&CEC_bus, HIGH);
 }
 
