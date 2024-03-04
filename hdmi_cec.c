@@ -91,7 +91,7 @@ ISR (TIMER1_COMPB_vect) {   // counting until start/bit ends
 
         Tx.status.bytes_sent = 0;
     } else if (Tx.status.bits_sent == 9) {      // ack bit
-        OCR1A = ONE_LOW_TIME;
+        OCR1A = ZERO_LOW_TIME;  // ack by initiator
 
         Tx.status.bits_sent = 0;
 
@@ -112,17 +112,17 @@ ISR (TIMER1_COMPB_vect) {   // counting until start/bit ends
 }
 
 void send_ack() {
-    set_initiator();
+    // set_initiator();
 
-    TCNT1 = 0;
+    // TCNT1 = 0;
 
-    pin_write(&CEC_bus, LOW);       // not cool, better implementation needed
-    while(TCNT1 < ZERO_LOW_TIME);   //
-                                    //
-    pin_write(&CEC_bus, HIGH);      //
-    while(TCNT1 < BIT_TIME);        //
+    // pin_write(&CEC_bus, LOW);       // not cool, better implementation needed
+    // while(TCNT1 < ZERO_LOW_TIME);   //
+    //                                 //
+    // pin_write(&CEC_bus, HIGH);      //
+    // while(TCNT1 < BIT_TIME);        //
 
-    set_follower();
+    // set_follower();
 }
 
 void bus_interrupt_handler() {
@@ -137,6 +137,7 @@ void bus_interrupt_handler() {
                 TCNT1 = 0;
             }
 
+            Rx.send_debug = 'L';
             break;
         }
 
@@ -148,6 +149,7 @@ void bus_interrupt_handler() {
                 Rx.status.start_detected = 1;
                 Rx.status.message_ended = 0;
 
+                Rx.send_debug = 'S';
                 break;
             } else if ((TCNT1 > ONE_LOW_TIME - TOLERANCE) &&
                     (TCNT1 < ONE_LOW_TIME + TOLERANCE)) {
@@ -157,21 +159,28 @@ void bus_interrupt_handler() {
                     if (Rx.status.current_bit < 8) {
                         Rx.buffer[Rx.status.bytes_read] |
                             (0x80 >> Rx.status.current_bit);
+                        Rx.send_debug = '1';
                     } else {
                         Rx.status.message_ended = 1;
                         TCCR1B &= ~_BV(CS11);
+                        Rx.send_debug = 'Y';
                     }
                 }
             } else if ((TCNT1 > ZERO_LOW_TIME - TOLERANCE) &&
                     (TCNT1 < ZERO_LOW_TIME + TOLERANCE)) {
+                Rx.send_debug = 4;
+                pin_toggle(&debug);
+                        
                 if (Rx.status.start_detected  && (Rx.status.current_bit < 8)) {
-                    pin_toggle(&debug);
                     Rx.buffer[Rx.status.bytes_read] &
                         ~(0x80 >> Rx.status.current_bit);
+                        Rx.send_debug = '0';
                 } else {
                     Rx.status.ack_detected = 1;
+                    Rx.send_debug = 'N';
                 }
             } else {
+                Rx.send_debug = 'E';
                 Rx.status.start_detected = 0;
                 break;
             }

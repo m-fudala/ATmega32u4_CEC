@@ -46,6 +46,7 @@ CEC_Tx Tx;
 
 typedef struct CEC_Rx {
     volatile unsigned char buffer[CEC_RX_BUFFER_SIZE];
+    volatile unsigned char send_debug;
 
     struct {
         volatile unsigned char start_detected : 1;
