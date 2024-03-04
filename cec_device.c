@@ -37,6 +37,7 @@ int main()
 
             // send_bytes((unsigned char[1]){0x0F}, 1);
             send_bytes((unsigned char[3]){0x40, 0x9E, 0x04}, 3);
+            // send_bytes((unsigned char[3]){0xFF, 0xFF, 0xFF}, 3);
         }
 
         if (Rx.status.message_ended) {

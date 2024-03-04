@@ -86,28 +86,28 @@ ISR (TIMER1_COMPB_vect) {   // counting until start/bit ends
         }
     }
 
-    // ack bit
-    if (Tx.status.bits_sent == 9) {
-        OCR1A = ZERO_LOW_TIME;
-    }
+    if (Tx.status.bits_sent == 10) {
+        TCCR1B &= ~_BV(CS11);
 
-    if (Tx.status.bits_sent < 10) {
+        Tx.status.bytes_sent = 0;
+    } else if (Tx.status.bits_sent == 9) {      // ack bit
+        OCR1A = ONE_LOW_TIME;
+
+        Tx.status.bits_sent = 0;
+
+        TCNT1 = 0;
+
+        pin_write(&CEC_bus, LOW);
+
+        if (Tx.status.bytes_sent == Tx.no_of_bytes) {
+            Tx.status.bits_sent = 10;
+        }
+    } else if (Tx.status.bits_sent < 9) {
         ++Tx.status.bits_sent;
 
         TCNT1 = 0;
 
         pin_write(&CEC_bus, LOW);
-    }
-
-    if (Tx.status.bits_sent == 10) {
-        Tx.status.bits_sent = 0;
-
-        if (Tx.status.bytes_sent == Tx.no_of_bytes) {
-            TCNT1 = 0;
-            TCCR1B &= ~_BV(CS11);
-
-            Tx.status.bytes_sent = 0;
-        }
     }
 }
 
