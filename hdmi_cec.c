@@ -67,11 +67,12 @@ ISR (TIMER1_COMPB_vect) {   // counting until start/bit ends
     }
 
     // data bits
-    if ((Tx.bytes[Tx.status.bytes_sent] & (0x80 >> Tx.status.bits_sent)) &&
-            (Tx.status.bits_sent < 8)) {
-        OCR1A = ONE_LOW_TIME;
-    } else {
-        OCR1A = ZERO_LOW_TIME;
+    if (Tx.status.bits_sent < 8) {
+        if ((Tx.bytes[Tx.status.bytes_sent] & (0x80 >> Tx.status.bits_sent))) {
+            OCR1A = ONE_LOW_TIME;
+        } else {
+            OCR1A = ZERO_LOW_TIME;
+        }
     }
 
     // eom bit
