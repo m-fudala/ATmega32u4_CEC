@@ -133,9 +133,9 @@ void bus_interrupt_handler() {
             if (Rx.status.current_bit == 9) {
                 Rx.status.current_bit = 0;
                 send_ack();
-            } else {
-                TCNT1 = 0;
             }
+            
+            TCNT1 = 0;            
 
             Rx.send_debug = 'L';
             break;
