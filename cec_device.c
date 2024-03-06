@@ -57,6 +57,12 @@ int main()
             Rx.send_debug = 0;
         }
 
+        if (Tx.send_debug) {
+            uart_send((unsigned char[1]){Tx.send_debug}, 1);
+
+            Tx.send_debug = 0;
+        }
+
         if (!check_message_readiness()) {
             uart_read(uart_rx_buffer, 8);
             unsigned char selected_command = 0;

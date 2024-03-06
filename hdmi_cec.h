@@ -24,6 +24,7 @@
 #define CEC_RX_BUFFER_SIZE 16   // max CEC message length
 
 Pin CEC_bus;
+Pin debug;
 
 enum CEC_direction {
     INITIATOR,
@@ -33,11 +34,13 @@ enum CEC_direction {
 typedef struct CEC_Tx {
     volatile unsigned char *bytes;
     volatile unsigned char no_of_bytes;
+    volatile unsigned char send_debug;
 
     struct {
         volatile unsigned char bus_direction : 1;
         volatile unsigned char bytes_sent : 4;
         volatile unsigned char bits_sent : 4;
+        volatile unsigned char ack_expected : 1;
     } status;
 } CEC_Tx;
 
