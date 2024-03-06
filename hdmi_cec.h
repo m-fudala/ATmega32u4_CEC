@@ -24,7 +24,6 @@
 #define CEC_RX_BUFFER_SIZE 16   // max CEC message length
 
 Pin CEC_bus;
-Pin debug;
 
 enum CEC_direction {
     INITIATOR,

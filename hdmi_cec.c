@@ -7,8 +7,6 @@ void cec_init() {
     pin_init(&CEC_bus, &PORTE, PE6, INPUT);
     Tx.status.bus_direction = FOLLOWER;
 
-    pin_init(&debug, &PORTC, PC6, OUTPUT);
-
     // init timer 1
     TIMSK1 |= _BV(OCIE1A) | _BV(OCIE1B);
 
@@ -112,17 +110,17 @@ ISR (TIMER1_COMPB_vect) {   // counting until start/bit ends
 }
 
 void send_ack() {
-    // set_initiator();
+    set_initiator();
 
-    // TCNT1 = 0;
+    TCNT1 = 0;
 
-    // pin_write(&CEC_bus, LOW);       // not cool, better implementation needed
-    // while(TCNT1 < ZERO_LOW_TIME);   //
-    //                                 //
-    // pin_write(&CEC_bus, HIGH);      //
-    // while(TCNT1 < BIT_TIME);        //
+    pin_write(&CEC_bus, LOW);       // not cool, better implementation needed
+    while(TCNT1 < ZERO_LOW_TIME);   //
+                                    //
+    pin_write(&CEC_bus, HIGH);      //
+    while(TCNT1 < BIT_TIME);        //
 
-    // set_follower();
+    set_follower();
 }
 
 void bus_interrupt_handler() {
@@ -133,18 +131,18 @@ void bus_interrupt_handler() {
             if (Rx.status.current_bit == 9) {
                 Rx.status.current_bit = 0;
                 send_ack();
+                Rx.send_debug = 'A';
             }
             
             TCNT1 = 0;            
 
-            Rx.send_debug = 'L';
+            // Rx.send_debug = 'L';
             break;
         }
 
         case HIGH:{
             if ((TCNT1 > START_LOW_TIME - TOLERANCE) &&
                     (TCNT1 < START_LOW_TIME + TOLERANCE)) {
-                pin_write(&debug, HIGH);
 
                 Rx.status.start_detected = 1;
                 Rx.status.message_ended = 0;
@@ -154,10 +152,9 @@ void bus_interrupt_handler() {
             } else if ((TCNT1 > ONE_LOW_TIME - TOLERANCE) &&
                     (TCNT1 < ONE_LOW_TIME + TOLERANCE)) {
                 if (Rx.status.start_detected) {
-                    pin_toggle(&debug);
 
                     if (Rx.status.current_bit < 8) {
-                        Rx.buffer[Rx.status.bytes_read] |
+                        Rx.buffer[Rx.status.bytes_read] |=
                             (0x80 >> Rx.status.current_bit);
                         Rx.send_debug = '1';
                     } else {
@@ -168,11 +165,9 @@ void bus_interrupt_handler() {
                 }
             } else if ((TCNT1 > ZERO_LOW_TIME - TOLERANCE) &&
                     (TCNT1 < ZERO_LOW_TIME + TOLERANCE)) {
-                Rx.send_debug = 4;
-                pin_toggle(&debug);
                         
                 if (Rx.status.start_detected  && (Rx.status.current_bit < 8)) {
-                    Rx.buffer[Rx.status.bytes_read] &
+                    Rx.buffer[Rx.status.bytes_read] &=
                         ~(0x80 >> Rx.status.current_bit);
                         Rx.send_debug = '0';
                 } else {
