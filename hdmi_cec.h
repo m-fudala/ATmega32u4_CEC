@@ -19,17 +19,12 @@
 #define ZERO_LOW_TIME 3000      // 1.5 ms
 #define BIT_TIME 4800           // 2.4 ms
 #define WAIT_FOR_ACK 3400       // 1.7 ms
-#define TOLERANCE 400           // 0.4 ms
+#define TOLERANCE 400           // 0.2 ms
 
 #define CEC_RX_BUFFER_SIZE 16   // max CEC message length
 
 Pin CEC_bus;
 Pin debug;
-
-enum CEC_direction {
-    INITIATOR,
-    FOLLOWER
-};
 
 typedef struct CEC_Tx {
     volatile unsigned char *bytes;
@@ -37,7 +32,6 @@ typedef struct CEC_Tx {
     volatile unsigned char send_debug;
 
     struct {
-        volatile unsigned char bus_direction : 1;
         volatile unsigned char bytes_sent : 4;
         volatile unsigned char bits_sent : 4;
         volatile unsigned char ack_expected : 1;

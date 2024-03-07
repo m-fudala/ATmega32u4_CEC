@@ -5,7 +5,6 @@ void cec_init() {
 
     // init pin
     pin_init(&CEC_bus, &PORTE, PE6, INPUT);
-    Tx.status.bus_direction = FOLLOWER;
 
     pin_init(&debug, &PORTC, PC6, OUTPUT);
 
@@ -20,7 +19,6 @@ void cec_init() {
 }
 
 void bus_low() {
-
     pin_set_direction(&CEC_bus, OUTPUT);
     pin_write(&CEC_bus, LOW);
 }
@@ -54,10 +52,9 @@ ISR (TIMER1_COMPA_vect) {   // counting time until the bus should go high again
     bus_release();
     pin_write(&debug, LOW);
 
-    Rx.send_debug = 'H';
+    Rx.send_debug = 'R';
 
     if (Tx.status.ack_expected) {
-
         if (pin_read(&CEC_bus)) {
             TCCR1B &= ~_BV(CS11);
             TIMSK1 &= ~(_BV(OCIE1A) | _BV(OCIE1B));
@@ -76,6 +73,7 @@ ISR (TIMER1_COMPA_vect) {   // counting time until the bus should go high again
 
         Rx.status.ack_detected = 0;
 
+        EIFR |= _BV(INT6);
         int_enable(INT6);
     }
 }
@@ -139,10 +137,8 @@ void send_ack() {
     TCCR1B &= ~_BV(CS11);
 
     OCR1A = ZERO_LOW_TIME;
-    // OCR1B = BIT_TIME;
 
     TIMSK1 |= _BV(OCIE1A);
-    // TIMSK1 |= _BV(OCIE1A) | _BV(OCIE1B);
     TCCR1B |= _BV(CS11);
 
     pin_write(&debug, HIGH);
@@ -164,11 +160,11 @@ void bus_interrupt_handler() {
                 Rx.status.current_bit = 0;
             }            
 
-            // Rx.send_debug = 'L';
+            Rx.send_debug = 'L';
             break;
         }
 
-        case HIGH:{
+        case HIGH: {
             if ((TCNT1 > START_LOW_TIME - TOLERANCE) &&
                     (TCNT1 < START_LOW_TIME + TOLERANCE)) {
 
@@ -176,15 +172,16 @@ void bus_interrupt_handler() {
                 Rx.status.message_ended = 0;
 
                 Rx.send_debug = 'S';
-                break;
+                return;
             } else if ((TCNT1 > ONE_LOW_TIME - TOLERANCE) &&
                     (TCNT1 < ONE_LOW_TIME + TOLERANCE)) {
+                
+                Rx.send_debug = Rx.status.current_bit;
                 if (Rx.status.start_detected) {
-
                     if (Rx.status.current_bit < 8) {
                         Rx.buffer[Rx.status.bytes_read] |=
                             (0x80 >> Rx.status.current_bit);
-                        Rx.send_debug = '1';
+                        // Rx.send_debug = '1';
                     } else {
                         Rx.status.message_ended = 1;
                         TCCR1B &= ~_BV(CS11);
@@ -193,11 +190,12 @@ void bus_interrupt_handler() {
                 }
             } else if ((TCNT1 > ZERO_LOW_TIME - TOLERANCE) &&
                     (TCNT1 < ZERO_LOW_TIME + TOLERANCE)) {
-                        
+                
+                Rx.send_debug = Rx.status.current_bit;
                 if (Rx.status.start_detected  && (Rx.status.current_bit < 8)) {
                     Rx.buffer[Rx.status.bytes_read] &=
                         ~(0x80 >> Rx.status.current_bit);
-                        Rx.send_debug = '0';
+                        // Rx.send_debug = '0';
                 } else {
                     Rx.status.ack_detected = 1;
                     Rx.send_debug = 'N';
@@ -205,11 +203,12 @@ void bus_interrupt_handler() {
             } else {
                 Rx.send_debug = 'E';
                 Rx.status.start_detected = 0;
-                break;
+                return;
             }
 
             if (Rx.status.current_bit == 7) {
                 ++Rx.status.bytes_read;
+                Rx.send_debug = 'K';
             }
 
             ++Rx.status.current_bit;
