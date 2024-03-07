@@ -63,9 +63,9 @@ CEC_Rx Rx;
 
 void cec_init();
 
-void set_initiator();
+void bus_low();
 
-void set_follower();
+void bus_release();
 
 void send_start();
 

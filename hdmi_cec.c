@@ -19,27 +19,18 @@ void cec_init() {
     sei();
 }
 
-void set_initiator() {
-    int_disable(INT6);
-
-    if (pin_read(&CEC_bus)) {
-        pin_set_direction(&CEC_bus, INPUT_PULLUP);  // intermediate step
-    }
+void bus_low() {
 
     pin_set_direction(&CEC_bus, OUTPUT);
-
-    Tx.status.bus_direction = INITIATOR;
+    pin_write(&CEC_bus, LOW);
 }
 
-void set_follower() {
+void bus_release() {
     pin_set_direction(&CEC_bus, INPUT);
-    Tx.status.bus_direction = FOLLOWER;
-
-    int_enable(INT6);
 }
 
 void send_start() {
-    set_initiator();
+    int_disable(INT6);
 
     OCR1A = START_LOW_TIME;
     OCR1B = START_TIME;
@@ -49,7 +40,7 @@ void send_start() {
     TCNT1 = 0;
     TCCR1B |= _BV(CS11);
 
-    pin_write(&CEC_bus, LOW);
+    bus_low();
 }
 
 void send_bytes(unsigned char *message, unsigned char no_of_bytes) {
@@ -60,21 +51,20 @@ void send_bytes(unsigned char *message, unsigned char no_of_bytes) {
 }
 
 ISR (TIMER1_COMPA_vect) {   // counting time until the bus should go high again
-    pin_write(&CEC_bus, HIGH);
+    bus_release();
     pin_write(&debug, LOW);
 
     Rx.send_debug = 'H';
 
     if (Tx.status.ack_expected) {
-        // set_follower();
 
         if (pin_read(&CEC_bus)) {
             TCCR1B &= ~_BV(CS11);
             TIMSK1 &= ~(_BV(OCIE1A) | _BV(OCIE1B));
 
             Tx.status.bytes_sent = 0;
-        } else {
-            set_initiator();
+
+            int_enable(INT6);
         }
 
         Tx.status.ack_expected = 0;
@@ -85,7 +75,8 @@ ISR (TIMER1_COMPA_vect) {   // counting time until the bus should go high again
         TIMSK1 &= ~(_BV(OCIE1A) | _BV(OCIE1B));
 
         Rx.status.ack_detected = 0;
-        set_follower();
+
+        int_enable(INT6);
     }
 }
 
@@ -127,7 +118,7 @@ ISR (TIMER1_COMPB_vect) {   // counting until start/bit ends
 
         TCNT1 = 0;
 
-        pin_write(&CEC_bus, LOW);
+        bus_low();
 
         if (Tx.status.bytes_sent == Tx.no_of_bytes) {
             Tx.status.bits_sent = 10;
@@ -137,17 +128,13 @@ ISR (TIMER1_COMPB_vect) {   // counting until start/bit ends
 
         TCNT1 = 0;
 
-        pin_write(&CEC_bus, LOW);
+        bus_low();
     }
 }
 
 void send_ack() {
     TIFR1 |= _BV(OCF1A) | _BV(OCF1B);
     EIFR |= _BV(INT6);
-    set_initiator();
-
-    // pin_write(&CEC_bus, LOW);
-    // pin_write(&debug, HIGH);
 
     TCCR1B &= ~_BV(CS11);
 
@@ -155,18 +142,13 @@ void send_ack() {
     // OCR1B = BIT_TIME;
 
     TIMSK1 |= _BV(OCIE1A);
+    // TIMSK1 |= _BV(OCIE1A) | _BV(OCIE1B);
     TCCR1B |= _BV(CS11);
 
     pin_write(&debug, HIGH);
 
-    pin_write(&CEC_bus, LOW);
-
-    // while (TCNT1 < ZERO_LOW_TIME);
-
-    // pin_write(&CEC_bus, HIGH);
-    // pin_write(&debug, LOW);
-
-    // set_follower;
+    int_disable(INT6);
+    bus_low();
 }
 
 void bus_interrupt_handler() {
