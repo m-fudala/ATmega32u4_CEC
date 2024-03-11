@@ -52,7 +52,7 @@ ISR (TIMER1_COMPA_vect) {   // counting time until the bus should go high again
     bus_release();
     pin_write(&debug, LOW);
 
-    Rx.send_debug = 'R';
+    Tx.send_debug = 'R';
 
     if (Tx.status.ack_expected) {
         if (pin_read(&CEC_bus)) {
@@ -68,6 +68,7 @@ ISR (TIMER1_COMPA_vect) {   // counting time until the bus should go high again
     }
 
     if (Rx.status.ack_detected) {
+        Tx.send_debug = 'F';
         TCCR1B &= ~_BV(CS11);
         TIMSK1 &= ~(_BV(OCIE1A) | _BV(OCIE1B));
 
@@ -103,11 +104,14 @@ ISR (TIMER1_COMPB_vect) {   // counting until start/bit ends
         }
     }
 
+    Tx.send_debug = Tx.status.bits_sent;
+
     if (Tx.status.bits_sent == 10) {
         TCCR1B &= ~_BV(CS11);
         TIMSK1 &= ~(_BV(OCIE1A) | _BV(OCIE1B));
 
         Tx.status.bytes_sent = 0;
+        Tx.status.bits_sent = 0;
     } else if (Tx.status.bits_sent == 9) {      // ack bit
         OCR1A = ONE_LOW_TIME;
 
@@ -155,6 +159,8 @@ void bus_interrupt_handler() {
 
             if (Rx.status.current_bit == 9) {
                 Rx.send_debug = TIMSK1;
+                Rx.status.ack_detected = 1;
+
                 send_ack();
 
                 Rx.status.current_bit = 0;
