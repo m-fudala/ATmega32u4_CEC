@@ -112,6 +112,8 @@ ISR (TIMER1_COMPB_vect) {   // counting until start/bit ends
 
         Tx.status.bytes_sent = 0;
         Tx.status.bits_sent = 0;
+
+        int_enable(INT6);
     } else if (Tx.status.bits_sent == 9) {      // ack bit
         OCR1A = ONE_LOW_TIME;
 
