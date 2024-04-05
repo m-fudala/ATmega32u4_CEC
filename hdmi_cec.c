@@ -163,7 +163,11 @@ void bus_interrupt_handler() {
                 Rx.send_debug = TIMSK1;
                 Rx.status.ack_detected = 1;
 
-                send_ack();
+                if ((Rx.buffer[0] & 0xF) == 0x4) {
+                    send_ack();
+                } else {
+                    Rx.status.start_detected = 0;
+                }
 
                 Rx.status.current_bit = 0;
             }            
@@ -178,6 +182,8 @@ void bus_interrupt_handler() {
 
                 Rx.status.start_detected = 1;
                 Rx.status.message_ended = 0;
+                Rx.status.current_bit = 0;
+                Rx.status.bytes_read = 0;
 
                 Rx.send_debug = 'S';
                 return;
