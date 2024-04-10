@@ -40,6 +40,8 @@ void send_start() {
     TCNT1 = 0;
     TCCR1B |= _BV(CS11);
 
+    // Tx.send_debug = 'S';
+
     bus_low();
 }
 
@@ -155,10 +157,10 @@ void send_ack() {
     bus_low();
 }
 
-unsigned char check_addressing(unsigned char first_byte) {
-    if ((first_byte & 0xF) == 0xF) {
+unsigned char check_addressing(unsigned char header_block) {
+    if ((header_block & 0xF) == 0xF) {
         return BROADCAST;
-    } else if ((first_byte & 0xF) == 0x4) {
+    } else if ((header_block & 0xF) == 0x4) {
         return DIRECT;
     } else {
         return INVALID;

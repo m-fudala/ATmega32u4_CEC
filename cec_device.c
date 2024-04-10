@@ -5,6 +5,7 @@
     https://github.com/m-fudala
 */
 
+#include <util/delay.h>
 #include "ATmega32u4_libraries/uart_library/uart.h"
 #include "ATmega32u4_libraries/external_interrupt_library/external_interrupt.h"
 #include "ATmega32u4_libraries/gpio_library/gpio.h"
@@ -31,6 +32,8 @@ int main()
     int_init(INT1, button_press, FALLING_EDGE);
     int_enable(INT1);
 
+    unsigned char message_to_be_sent = 0;
+
     while (1) {
         if (send_message) {
             send_message = 0;
@@ -38,6 +41,12 @@ int main()
             // send_bytes((unsigned char[1]){0x0F}, 1);
             send_bytes((unsigned char[3]){0x40, 0x9E, 0x04}, 3);
             // send_bytes((unsigned char[3]){0xFF, 0xFF, 0xFF}, 3);
+        }
+
+        if (message_to_be_sent) {
+            send_start();
+
+            message_to_be_sent = 0;
         }
 
         if (Rx.status.message_received) {
@@ -54,6 +63,19 @@ int main()
                     sizeof(termination) / sizeof(unsigned char) - 1);
 
             Rx.status.message_received = 0;
+
+            // TODO: better response system
+
+            if (Rx.buffer[1] == 0x8C) {     // give Vendor ID
+                // TODO: waiting for appropiate time
+                _delay_ms(12);
+
+                // respond with Feature Abort
+                Tx.bytes = (unsigned char[5]){0x40, 0x87, 0x01, 0x01, 0x01};
+                Tx.no_of_bytes = 5;
+
+                send_start();
+            }
         }
 
         if (Rx.send_debug) {
@@ -105,7 +127,12 @@ int main()
                     uart_send(send_ok,
                             sizeof(send_ok) / sizeof(unsigned char) - 1);
 
-                    // send a message here
+                    // send Image View On
+                    Tx.bytes =
+                        (unsigned char[2]){0x40, 0x04};
+                    Tx.no_of_bytes = 2;
+
+                    message_to_be_sent = 1;
 
                     break;
                 }
