@@ -40,15 +40,20 @@ int main()
             // send_bytes((unsigned char[3]){0xFF, 0xFF, 0xFF}, 3);
         }
 
-        if (Rx.status.message_ended) {
-            unsigned char send_ok[5] = "OK\r\n";
+        if (Rx.status.message_received) {
+            // unsigned char send_ok[5] = "M:\r\n";
 
-            uart_send(send_ok,
-                    sizeof(send_ok) / sizeof(unsigned char) - 1);
+            // uart_send(send_ok,
+            //         sizeof(send_ok) / sizeof(unsigned char) - 1);
+
+            unsigned char termination[3] = "\r\n";
 
             uart_send((unsigned char *)Rx.buffer, Rx.status.bytes_read);
 
-            Rx.status.message_ended = 0;
+            uart_send(termination,
+                    sizeof(termination) / sizeof(unsigned char) - 1);
+
+            Rx.status.message_received = 0;
         }
 
         if (Rx.send_debug) {
@@ -85,26 +90,26 @@ int main()
                 }
             }
 
-        switch (selected_command) {
-            case INV_COMMAND: {
-                unsigned char send_nok[11] = "Inv comm\r\n";
-                uart_send(send_nok,
-                        sizeof(send_nok) / sizeof(unsigned char) - 1);
+            switch (selected_command) {
+                case INV_COMMAND: {
+                    unsigned char send_nok[11] = "Inv comm\r\n";
+                    uart_send(send_nok,
+                            sizeof(send_nok) / sizeof(unsigned char) - 1);
 
-                break;
+                    break;
+                }
+
+                case SND: {
+                    unsigned char send_ok[6] = "snd\r\n";
+
+                    uart_send(send_ok,
+                            sizeof(send_ok) / sizeof(unsigned char) - 1);
+
+                    // send a message here
+
+                    break;
+                }
             }
-
-            case SND: {
-                unsigned char send_ok[6] = "snd\r\n";
-
-                send_bytes((unsigned char[1]){0x0F}, 1);
-
-                uart_send(send_ok,
-                        sizeof(send_ok) / sizeof(unsigned char) - 1);
-
-                break;
-            }
-        }
         }
     }
 

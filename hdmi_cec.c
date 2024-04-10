@@ -3,6 +3,8 @@
 void cec_init() {
     cli();
 
+    cec_address = 0x4;
+
     // init pin
     pin_init(&CEC_bus, &PORTE, PE6, INPUT);
 
@@ -45,14 +47,14 @@ void send_bytes(unsigned char *message, unsigned char no_of_bytes) {
     Tx.bytes = message;
     Tx.no_of_bytes = no_of_bytes;
     
-    send_start();   
+    send_start();
 }
 
 ISR (TIMER1_COMPA_vect) {   // counting time until the bus should go high again
     bus_release();
     pin_write(&debug, LOW);
 
-    Tx.send_debug = 'R';
+    // Tx.send_debug = 'R';
 
     if (Tx.status.ack_expected) {
         if (pin_read(&CEC_bus)) {
@@ -68,7 +70,7 @@ ISR (TIMER1_COMPA_vect) {   // counting time until the bus should go high again
     }
 
     if (Rx.status.ack_detected) {
-        Tx.send_debug = 'F';
+        // Tx.send_debug = 'F';
         TCCR1B &= ~_BV(CS11);
         TIMSK1 &= ~(_BV(OCIE1A) | _BV(OCIE1B));
 
@@ -104,7 +106,7 @@ ISR (TIMER1_COMPB_vect) {   // counting until start/bit ends
         }
     }
 
-    Tx.send_debug = Tx.status.bits_sent;
+    // Tx.send_debug = Tx.status.bits_sent;
 
     if (Tx.status.bits_sent == 10) {
         TCCR1B &= ~_BV(CS11);
@@ -153,6 +155,16 @@ void send_ack() {
     bus_low();
 }
 
+unsigned char check_addressing(unsigned char first_byte) {
+    if ((first_byte & 0xF) == 0xF) {
+        return BROADCAST;
+    } else if ((first_byte & 0xF) == 0x4) {
+        return DIRECT;
+    } else {
+        return INVALID;
+    }
+}
+
 void bus_interrupt_handler() {
     switch (pin_read(&CEC_bus)) {
         case LOW: {
@@ -160,69 +172,106 @@ void bus_interrupt_handler() {
             TCNT1 = 0;
 
             if (Rx.status.current_bit == 9) {
-                Rx.send_debug = TIMSK1;
+                // Rx.send_debug = TIMSK1;
                 Rx.status.ack_detected = 1;
 
-                if ((Rx.buffer[0] & 0xF) == 0x4) {
-                    send_ack();
-                } else {
-                    Rx.status.start_detected = 0;
+                if (Rx.status.bytes_read == 1) {
+                    Rx.status.addressing = check_addressing(Rx.buffer[0]);
+                }
+
+                switch (Rx.status.addressing) {
+                    case DIRECT: {
+                       send_ack();
+
+                        if (Rx.status.eom_detected) {
+                            Rx.status.message_received = 1;
+                        }
+                        // Rx.send_debug = 'D';
+
+                        break;
+                    }
+
+                    case BROADCAST: {
+                        if (Rx.status.eom_detected) {
+                            Rx.status.message_received = 1;
+                        }
+                        // Rx.send_debug = 'B';
+
+                        break;
+                    }
+
+                    case INVALID: {
+                        Rx.status.start_detected = 0;
+                        Rx.status.message_received = 0;
+                        // Rx.send_debug = 'X';
+
+                        break;
+                    }
                 }
 
                 Rx.status.current_bit = 0;
-            }            
+            }
 
-            Rx.send_debug = 'L';
+            // Rx.send_debug = 'L';
             break;
         }
 
         case HIGH: {
+            TCNT3 = 0;
+
             if ((TCNT1 > START_LOW_TIME - TOLERANCE) &&
                     (TCNT1 < START_LOW_TIME + TOLERANCE)) {
 
                 Rx.status.start_detected = 1;
-                Rx.status.message_ended = 0;
+                Rx.status.eom_detected = 0;
                 Rx.status.current_bit = 0;
                 Rx.status.bytes_read = 0;
 
-                Rx.send_debug = 'S';
+                // Rx.send_debug = 'S';
                 return;
             } else if ((TCNT1 > ONE_LOW_TIME - TOLERANCE) &&
                     (TCNT1 < ONE_LOW_TIME + TOLERANCE)) {
                 
-                Rx.send_debug = Rx.status.current_bit;
+                // Rx.send_debug = Rx.status.current_bit;
                 if (Rx.status.start_detected) {
+                    if (Rx.status.ack_detected &&
+                            (Rx.status.addressing == BROADCAST)) {
+                        Rx.status.ack_detected = 0;
+
+                        return;     // ignore ACK in broadcast
+                    }
+
                     if (Rx.status.current_bit < 8) {
                         Rx.buffer[Rx.status.bytes_read] |=
                             (0x80 >> Rx.status.current_bit);
                         // Rx.send_debug = '1';
                     } else {
-                        Rx.status.message_ended = 1;
+                        Rx.status.eom_detected = 1;
                         TCCR1B &= ~_BV(CS11);
-                        Rx.send_debug = 'Y';
+                        // Rx.send_debug = 'Y';
                     }
                 }
             } else if ((TCNT1 > ZERO_LOW_TIME - TOLERANCE) &&
                     (TCNT1 < ZERO_LOW_TIME + TOLERANCE)) {
                 
-                Rx.send_debug = Rx.status.current_bit;
+                // Rx.send_debug = Rx.status.current_bit;
                 if (Rx.status.start_detected  && (Rx.status.current_bit < 8)) {
                     Rx.buffer[Rx.status.bytes_read] &=
                         ~(0x80 >> Rx.status.current_bit);
                         // Rx.send_debug = '0';
                 } else {
                     Rx.status.ack_detected = 1;
-                    Rx.send_debug = 'N';
+                    // Rx.send_debug = 'N';
                 }
             } else {
-                Rx.send_debug = 'E';
+                // Rx.send_debug = 'E';
                 Rx.status.start_detected = 0;
                 return;
             }
 
             if (Rx.status.current_bit == 7) {
                 ++Rx.status.bytes_read;
-                Rx.send_debug = 'K';
+                // Rx.send_debug = 'K';
             }
 
             ++Rx.status.current_bit;

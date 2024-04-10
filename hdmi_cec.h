@@ -40,6 +40,14 @@ typedef struct CEC_Tx {
 
 CEC_Tx Tx;
 
+enum Addressing {
+    INVALID,
+    DIRECT,
+    BROADCAST
+};
+
+volatile unsigned char cec_address;
+
 typedef struct CEC_Rx {
     volatile unsigned char buffer[CEC_RX_BUFFER_SIZE];
     volatile unsigned char send_debug;
@@ -48,8 +56,10 @@ typedef struct CEC_Rx {
         volatile unsigned char start_detected : 1;
         volatile unsigned char bytes_read : 4;
         volatile unsigned char current_bit : 4;
-        volatile unsigned char message_ended : 1;
+        volatile unsigned char addressing : 2;
+        volatile unsigned char eom_detected : 1;
         volatile unsigned char ack_detected : 1;
+        volatile unsigned char message_received : 1;
     } status;
 } CEC_Rx;
 
@@ -66,6 +76,8 @@ void send_start();
 void send_bytes(unsigned char *message, unsigned char no_of_bytes);
 
 void send_ack();
+
+unsigned char check_addressing(unsigned char first_byte);
 
 void bus_interrupt_handler();
 
