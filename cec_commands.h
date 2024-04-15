@@ -40,7 +40,8 @@ enum User_control_codes {
 
 typedef struct CEC_command {
     unsigned char header;
-    unsigned char data[15];
+    unsigned char opcode;
+    unsigned char data[14];
 } CEC_command;
 
 union Feature_abort {
@@ -67,6 +68,18 @@ union Report_physical_address {
     
     unsigned char physical_address[2];
     unsigned char device_type;
+};
+
+union Device_vendor_id {
+    unsigned char data[3];
+    
+    unsigned char vendor_id[3];
+};
+
+union Report_power_status {
+    unsigned char data[1];
+    
+    unsigned char power_status;
 };
 
 union Cec_version {

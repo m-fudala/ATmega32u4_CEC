@@ -59,7 +59,7 @@ ISR (TIMER1_COMPA_vect) {   // counting time until the bus should go high again
     // Tx.send_debug = 'R';
 
     if (Tx.status.ack_expected) {
-        if (pin_read(&CEC_bus)) {
+        if (pin_read(&CEC_bus) && !((Tx.bytes[0] & 0xF) == 0xF)) {
             TCCR1B &= ~_BV(CS11);
             TIMSK1 &= ~(_BV(OCIE1A) | _BV(OCIE1B));
 
