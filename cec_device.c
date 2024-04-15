@@ -51,6 +51,8 @@ int main()
         }
 
         if (Rx.status.message_received) {
+            Rx.status.message_received = 0;
+
             // unsigned char send_ok[5] = "M:\r\n";
 
             // uart_send(send_ok,
@@ -65,19 +67,37 @@ int main()
                         sizeof(termination) / sizeof(unsigned char) - 1);
             }
 
-            Rx.status.message_received = 0;
-
             CEC_command received_command = {
                 .header = Rx.buffer[0],
                 .opcode = Rx.buffer[1]
             };
 
             switch (received_command.opcode) {
+                case GIVE_OSD_NAME: {
+                    // set 'TV PC' as OSD name
+                    Tx.bytes =
+                        (unsigned char[7]){0x40, 0x47,
+                        'T', 'V', ' ', 'P', 'C'};
+                    Tx.no_of_bytes = 7;
+
+                    // TODO: waiting for appropiate time
+                    _delay_ms(12);
+
+                    send_start();
+
+                    break;
+                }
+
                 case GIVE_PHYSICAL_ADDRESS: {
                     // respond with static address
                     Tx.bytes =
                         (unsigned char[5]){0x40, 0x84, 0x10, 0x00, 0x04};
                     Tx.no_of_bytes = 5;
+
+                    // TODO: waiting for appropiate time
+                    _delay_ms(12);
+
+                    send_start();
 
                     break;
                 }
@@ -88,14 +108,14 @@ int main()
                         (unsigned char[5]){0x40, 0x87, 0x01, 0x01, 0x01};
                     Tx.no_of_bytes = 5;
 
+                    // TODO: waiting for appropiate time
+                    _delay_ms(12);
+
+                    send_start();
+
                     break;
                 }
             }
-
-            // TODO: waiting for appropiate time
-            _delay_ms(12);
-
-            send_start();
         }
 
         if (Rx.send_debug) {
