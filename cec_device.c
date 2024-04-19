@@ -15,7 +15,6 @@
 
 
 void button_press();
-volatile unsigned char send_message = 0;
 
 int main()
 {
@@ -27,23 +26,9 @@ int main()
 
     cec_init();
 
-    // init interrupt 2
-    Pin Button;
-    pin_init(&Button, &PORTD, PD1, INPUT);
-    int_init(INT1, button_press, FALLING_EDGE);
-    int_enable(INT1);
-
     unsigned char message_to_be_sent = 0;
 
     while (1) {
-        if (send_message) {
-            send_message = 0;
-
-            // send_bytes((unsigned char[1]){0x0F}, 1);
-            send_bytes((unsigned char[3]){0x40, 0x9E, 0x04}, 3);
-            // send_bytes((unsigned char[3]){0xFF, 0xFF, 0xFF}, 3);
-        }
-
         if (message_to_be_sent) {
             message_to_be_sent = 0;
             
@@ -53,12 +38,13 @@ int main()
         if (Rx.status.message_received) {
             Rx.status.message_received = 0;
 
-            // unsigned char send_ok[5] = "M:\r\n";
+            CEC_command received_command = {
+                .header = Rx.buffer[0],
+                .opcode = Rx.buffer[1]
+            };
 
-            // uart_send(send_ok,
-            //         sizeof(send_ok) / sizeof(unsigned char) - 1);
-
-            if (((Rx.buffer[0] & 0xF) == 0x4) && (Rx.status.bytes_read > 1)) {
+            if (((received_command.header & 0xF) == 0x4)
+                    && (Rx.status.bytes_read > 1)) {
                 unsigned char termination[3] = "\r\n";
 
                 uart_send((unsigned char *)Rx.buffer, Rx.status.bytes_read);
@@ -66,11 +52,6 @@ int main()
                 uart_send(termination,
                         sizeof(termination) / sizeof(unsigned char) - 1);
             }
-
-            CEC_command received_command = {
-                .header = Rx.buffer[0],
-                .opcode = Rx.buffer[1]
-            };
 
             switch (received_command.opcode) {
                 case GIVE_OSD_NAME: {
@@ -161,21 +142,45 @@ int main()
                     break;
                 }
 
-                case SND: {
-                    unsigned char send_ok[6] = "snd\r\n";
+                case STB: {
+                    unsigned char res[] = "Switching to standby\r\n";
 
-                    uart_send(send_ok,
-                            sizeof(send_ok) / sizeof(unsigned char) - 1);
+                    uart_send(res, sizeof(res) / sizeof(unsigned char) - 1);
 
-                    // // send Image View On
-                    // Tx.bytes =
-                    //     (unsigned char[2]){0x40, 0x04};
-                    // Tx.no_of_bytes = 2;
+                    // send Standby to TV
+                    Tx.bytes =
+                        (unsigned char[4]){0x4F, STANDBY};
+                    Tx.no_of_bytes = 2;
+
+                    message_to_be_sent = 1;
+
+                    break;
+                }
+
+                case IV: {
+                    unsigned char res[] = "Turning image ON\r\n";
+
+                    uart_send(res, sizeof(res) / sizeof(unsigned char) - 1);
+
+                    // send Image View On
+                    Tx.bytes =
+                        (unsigned char[4]){0x40, IMAGE_VIEW_ON};
+                    Tx.no_of_bytes = 2;
+
+                    message_to_be_sent = 1;
+
+                    break;
+                }
+
+                case AS: {
+                    unsigned char res[] = "Changing source\r\n";
+
+                    uart_send(res, sizeof(res) / sizeof(unsigned char) - 1);
 
                     // send Active Source
                     // send static address
                     Tx.bytes =
-                        (unsigned char[4]){0x4F, 0x82, 0x10, 0x00};
+                        (unsigned char[4]){0x4F, ACTIVE_SOURCE, 0x10, 0x00};
                     Tx.no_of_bytes = 4;
 
                     message_to_be_sent = 1;
@@ -187,8 +192,4 @@ int main()
     }
 
     return 0;
-}
-
-void button_press() {
-    send_message = 1;
 }

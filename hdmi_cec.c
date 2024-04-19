@@ -40,7 +40,7 @@ void send_start() {
     TCNT1 = 0;
     TCCR1B |= _BV(CS11);
 
-    // Tx.send_debug = 'S';
+    Tx.send_debug = 'S';
 
     bus_low();
 }
