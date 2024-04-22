@@ -32,6 +32,8 @@ void bus_release() {
 void send_start() {
     int_disable(INT6);
 
+    TIFR1 |= _BV(OCF1A) | _BV(OCF1B);
+
     OCR1A = START_LOW_TIME;
     OCR1B = START_TIME;
 
@@ -40,7 +42,7 @@ void send_start() {
     TCNT1 = 0;
     TCCR1B |= _BV(CS11);
 
-    Tx.send_debug = 'S';
+    // Tx.send_debug = 'S';
 
     bus_low();
 }
@@ -108,7 +110,7 @@ ISR (TIMER1_COMPB_vect) {   // counting until start/bit ends
         }
     }
 
-    // Tx.send_debug = Tx.status.bits_sent;
+    // Tx.send_debug = Tx.status.bits_sent + 1;
 
     if (Tx.status.bits_sent == 10) {
         TCCR1B &= ~_BV(CS11);
@@ -256,7 +258,7 @@ void bus_interrupt_handler() {
             } else if ((TCNT1 > ZERO_LOW_TIME - TOLERANCE) &&
                     (TCNT1 < ZERO_LOW_TIME + TOLERANCE)) {
                 
-                // Rx.send_debug = Rx.status.current_bit;
+                // Rx.send_debug = Rx.status.current_bit + 1;
                 if (Rx.status.start_detected  && (Rx.status.current_bit < 8)) {
                     Rx.buffer[Rx.status.bytes_read] &=
                         ~(0x80 >> Rx.status.current_bit);

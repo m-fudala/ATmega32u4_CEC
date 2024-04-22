@@ -5,6 +5,7 @@
     https://github.com/m-fudala
 */
 
+#include <stdio.h>
 #include <util/delay.h>
 #include "ATmega32u4_libraries/uart_library/uart.h"
 #include "ATmega32u4_libraries/external_interrupt_library/external_interrupt.h"
@@ -45,19 +46,28 @@ int main()
 
             if (((received_command.header & 0xF) == 0x4)
                     && (Rx.status.bytes_read > 1)) {
-                unsigned char termination[3] = "\r\n";
 
-                uart_send((unsigned char *)Rx.buffer, Rx.status.bytes_read);
+                // buffer used to send debug with received messages
+                // 4 characters at the start, 3 characters for every byte plus
+                // a space and termination at the end
+                unsigned char buffer[4 + Rx.status.bytes_read * 3 + 3];
 
-                uart_send(termination,
-                        sizeof(termination) / sizeof(unsigned char) - 1);
+                sprintf(buffer, "Rec:");
+
+                for (unsigned char i = 0; i < Rx.status.bytes_read; ++i) {
+                    sprintf(buffer, "%s %02X", buffer, Rx.buffer[i]);
+                }
+
+                sprintf(buffer, "%s\r\n", buffer);
+
+                uart_send(buffer, 4 + Rx.status.bytes_read * 3 + 3 - 1);
             }
 
             switch (received_command.opcode) {
                 case GIVE_OSD_NAME: {
                     // set 'TV PC' as OSD name
                     Tx.bytes =
-                        (unsigned char[7]){0x40, 0x47,
+                        (unsigned char[7]){0x40, SET_OSD_NAME,
                         'T', 'V', ' ', 'P', 'C'};
                     Tx.no_of_bytes = 7;
 
@@ -72,7 +82,8 @@ int main()
                 case GIVE_PHYSICAL_ADDRESS: {
                     // respond with static address
                     Tx.bytes =
-                        (unsigned char[5]){0x40, 0x84, 0x10, 0x00, 0x04};
+                        (unsigned char[5]){0x40, REPORT_PHYSICAL_ADDRESS,
+                        0x10, 0x00, 0x04};
                     Tx.no_of_bytes = 5;
 
                     // TODO: waiting for appropiate time
@@ -86,7 +97,8 @@ int main()
                 case GIVE_DEVICE_VENDOR_ID: {
                     // respond with some ID
                     Tx.bytes =
-                        (unsigned char[5]){0x40, 0x87, 0x01, 0x01, 0x01};
+                        (unsigned char[5]){0x40, DEVICE_VENDOR_ID,
+                        0x01, 0x01, 0x01};
                     Tx.no_of_bytes = 5;
 
                     // TODO: waiting for appropiate time
