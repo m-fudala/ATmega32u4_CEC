@@ -2,13 +2,15 @@
 #define SERIAL_COMMANDS_H_
 
 #define MAX_COMMAND_SIZE (3 + 1)
-#define NO_OF_COMMANDS 3
+#define NO_OF_COMMANDS 5
 
 enum Commands_index {
     INV_COMMAND,
     STB,
     IV,
-    AS
+    AS,
+    VU,
+    VD
 };
 
 typedef struct Command {
@@ -19,7 +21,9 @@ typedef struct Command {
 Command commands[NO_OF_COMMANDS] = {
     {"STB", 3},
     {"IV", 2},
-    {"AS", 2}
+    {"AS", 2},
+    {"VU", 2},
+    {"VD", 2}
 };
 
 #endif

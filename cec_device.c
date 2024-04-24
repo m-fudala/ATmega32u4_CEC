@@ -45,7 +45,7 @@ int main()
                 .opcode = Rx.buffer[1]
             };
 
-            if (((received_command.header & 0xF) == 0x4)
+            if (((received_command.header & 0xF) == cec_address)
                     && (Rx.status.bytes_read > 1)) {
 
                 // buffer used to send debug with received messages
@@ -68,8 +68,8 @@ int main()
                 case GIVE_OSD_NAME: {
                     // set 'TV PC' as OSD name
                     Tx.bytes =
-                        (unsigned char[7]){0x40, SET_OSD_NAME,
-                        'T', 'V', ' ', 'P', 'C'};
+                        (unsigned char[7]){(cec_address << 4) | 0,
+                            SET_OSD_NAME, 'T', 'V', ' ', 'P', 'C'};
                     Tx.no_of_bytes = 7;
 
                     message_to_be_sent = 1;
@@ -80,8 +80,8 @@ int main()
                 case GIVE_PHYSICAL_ADDRESS: {
                     // respond with static address
                     Tx.bytes =
-                        (unsigned char[5]){0x40, REPORT_PHYSICAL_ADDRESS,
-                        0x10, 0x00, 0x04};
+                        (unsigned char[5]){(cec_address << 4) | 0,
+                            REPORT_PHYSICAL_ADDRESS, 0x10, 0x00, 0x04};
                     Tx.no_of_bytes = 5;
 
                     message_to_be_sent = 1;
@@ -92,8 +92,8 @@ int main()
                 case GIVE_DEVICE_VENDOR_ID: {
                     // respond with some ID
                     Tx.bytes =
-                        (unsigned char[5]){0x40, DEVICE_VENDOR_ID,
-                        0x01, 0x01, 0x01};
+                        (unsigned char[5]){(cec_address << 4) | 0,
+                            DEVICE_VENDOR_ID, 0x00, 0xe0, 0x91};
                     Tx.no_of_bytes = 5;
 
                     message_to_be_sent = 1;
@@ -153,7 +153,7 @@ int main()
 
                     // send Standby to TV
                     Tx.bytes =
-                        (unsigned char[4]){0x4F, STANDBY};
+                        (unsigned char[4]){(cec_address << 4) | 0xF, STANDBY};
                     Tx.no_of_bytes = 2;
 
                     message_to_be_sent = 1;
@@ -168,7 +168,8 @@ int main()
 
                     // send Image View On
                     Tx.bytes =
-                        (unsigned char[4]){0x40, IMAGE_VIEW_ON};
+                        (unsigned char[4]){(cec_address << 4) | 0,
+                        IMAGE_VIEW_ON};
                     Tx.no_of_bytes = 2;
 
                     message_to_be_sent = 1;
@@ -184,8 +185,41 @@ int main()
                     // send Active Source
                     // send static address
                     Tx.bytes =
-                        (unsigned char[4]){0x4F, ACTIVE_SOURCE, 0x10, 0x00};
+                        (unsigned char[4]){(cec_address << 4) | 0,
+                            ACTIVE_SOURCE, 0x10, 0x00};
                     Tx.no_of_bytes = 4;
+
+                    message_to_be_sent = 1;
+
+                    break;
+                }
+
+                case VU: {
+                    unsigned char res[] = "Volume up\r\n";
+
+                    uart_send(res, sizeof(res) / sizeof(unsigned char) - 1);
+
+                    // send User Control Volume Up
+                    Tx.bytes =
+                        (unsigned char[3]){(cec_address << 4) | 0,
+                            USER_CONTROL_PRESSED, VOLUME_UP};
+                    Tx.no_of_bytes = 3;
+
+                    message_to_be_sent = 1;
+
+                    break;
+                }
+
+                case VD: {
+                    unsigned char res[] = "Volume down\r\n";
+
+                    uart_send(res, sizeof(res) / sizeof(unsigned char) - 1);
+
+                    // send User Control Volume Down
+                    Tx.bytes =
+                        (unsigned char[3]){(cec_address << 4) | 0,
+                            USER_CONTROL_PRESSED, VOLUME_DOWN};
+                    Tx.no_of_bytes = 3;
 
                     message_to_be_sent = 1;
 

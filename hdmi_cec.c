@@ -59,7 +59,7 @@ void send_bytes(unsigned char *message, unsigned char no_of_bytes) {
 ISR (TIMER1_COMPA_vect) {   // counting time until the bus should go high again
     Rx.status.bus_idle_overflow = 0;
     TCNT3 = 0;
-    
+
     bus_release();
     pin_write(&debug, LOW);
 
@@ -167,7 +167,7 @@ void send_ack() {
 unsigned char check_addressing(unsigned char header_block) {
     if ((header_block & 0xF) == 0xF) {
         return BROADCAST;
-    } else if ((header_block & 0xF) == 0x4) {
+    } else if ((header_block & 0xF) == cec_address) {
         return DIRECT;
     } else {
         return INVALID;
