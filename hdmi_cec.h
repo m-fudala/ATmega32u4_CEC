@@ -60,6 +60,7 @@ typedef struct CEC_Rx {
         volatile unsigned char eom_detected : 1;
         volatile unsigned char ack_detected : 1;
         volatile unsigned char message_received : 1;
+        volatile unsigned char bus_idle_overflow : 1;
     } status;
 } CEC_Rx;
 

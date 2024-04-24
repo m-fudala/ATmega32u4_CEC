@@ -30,7 +30,8 @@ int main()
     unsigned char message_to_be_sent = 0;
 
     while (1) {
-        if (message_to_be_sent) {
+        if (message_to_be_sent &&
+                (Rx.status.bus_idle_overflow || (TCNT3 > (5 * BIT_TIME)))) {
             message_to_be_sent = 0;
             
             send_start();
@@ -71,10 +72,7 @@ int main()
                         'T', 'V', ' ', 'P', 'C'};
                     Tx.no_of_bytes = 7;
 
-                    // TODO: waiting for appropiate time
-                    _delay_ms(12);
-
-                    send_start();
+                    message_to_be_sent = 1;
 
                     break;
                 }
@@ -86,10 +84,7 @@ int main()
                         0x10, 0x00, 0x04};
                     Tx.no_of_bytes = 5;
 
-                    // TODO: waiting for appropiate time
-                    _delay_ms(12);
-
-                    send_start();
+                    message_to_be_sent = 1;
 
                     break;
                 }
@@ -101,10 +96,7 @@ int main()
                         0x01, 0x01, 0x01};
                     Tx.no_of_bytes = 5;
 
-                    // TODO: waiting for appropiate time
-                    _delay_ms(12);
-
-                    send_start();
+                    message_to_be_sent = 1;
 
                     break;
                 }

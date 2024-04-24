@@ -10,8 +10,10 @@ void cec_init() {
 
     pin_init(&debug, &PORTC, PC6, OUTPUT);
 
-    // init timer 1
-    // TIMSK1 |= _BV(OCIE1A) | _BV(OCIE1B);
+    // init timer 3
+    TCNT3 = 0;
+    TIMSK3 |= _BV(TOIE3);
+    TCCR3B |= _BV(CS31);
 
     // init interrupt 6
     int_init(INT6, bus_interrupt_handler, ANY_EDGE);
@@ -55,6 +57,9 @@ void send_bytes(unsigned char *message, unsigned char no_of_bytes) {
 }
 
 ISR (TIMER1_COMPA_vect) {   // counting time until the bus should go high again
+    Rx.status.bus_idle_overflow = 0;
+    TCNT3 = 0;
+    
     bus_release();
     pin_write(&debug, LOW);
 
@@ -221,6 +226,7 @@ void bus_interrupt_handler() {
         }
 
         case HIGH: {
+            Rx.status.bus_idle_overflow = 0;
             TCNT3 = 0;
 
             if ((TCNT1 > START_LOW_TIME - TOLERANCE) &&
@@ -283,4 +289,8 @@ void bus_interrupt_handler() {
             break;
         }
     }
+}
+
+ISR (TIMER3_OVF_vect) {
+    Rx.status.bus_idle_overflow = 1;
 }
