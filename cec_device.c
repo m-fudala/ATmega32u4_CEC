@@ -107,13 +107,52 @@ int main()
                 case GIVE_DEVICE_VENDOR_ID: {
                     // respond with some ID
                     Tx.bytes =
-                        (unsigned char[5]){(cec_address << 4) | 0,
-                            DEVICE_VENDOR_ID, 0x00, 0xe0, 0x91};
+                        (unsigned char[5]){(cec_address << 4) | 0xF,
+                            DEVICE_VENDOR_ID, 0x00, 0xE0, 0x91};
                     Tx.no_of_bytes = 5;
 
                     message_to_be_sent = 1;
 
                     break;
+                }
+
+                case GIVE_DEVICE_POWER_STATUS: {
+                    // respond with status On
+                    Tx.bytes =
+                        (unsigned char[3]){(cec_address << 4) | 0,
+                            REPORT_POWER_STATUS, 0x00};
+                    Tx.no_of_bytes = 3;
+
+                    message_to_be_sent = 1;
+
+                    break;
+                }
+
+                case GET_CEC_VERSION: {
+                    // respond with CEC version
+                    Tx.bytes =
+                        (unsigned char[3]){(cec_address << 4) | 0,
+                            CEC_VERSION, 0x04};
+                    Tx.no_of_bytes = 3;
+
+                    message_to_be_sent = 1;
+
+                    break;
+                }
+
+                default: {
+                    if (((received_command.header & 0xF) == cec_address)
+                        && (Rx.status.bytes_read > 1)) {
+                        // respond with Feature Abort
+                        Tx.bytes =
+                            (unsigned char[4]){(cec_address << 4) | 0,
+                                FEATURE_ABORT, received_command.opcode, 0x00};
+                        Tx.no_of_bytes = 4;
+
+                        message_to_be_sent = 1;
+
+                        break;
+                    }
                 }
             }
         }
@@ -267,6 +306,38 @@ int main()
                         (unsigned char[7]){(cec_address << 4) | 0,
                             SET_OSD_STRING, 0x0, 'T', 'E', 'S', 'T'};
                     Tx.no_of_bytes = 7;
+
+                    message_to_be_sent = 1;
+
+                    break;
+                }
+
+                case CV: {
+                    unsigned char res[] = "Getting CEC version\r\n";
+
+                    uart_send(res, sizeof(res) / sizeof(unsigned char) - 1);
+
+                    // send Get CEC Version
+                    Tx.bytes =
+                        (unsigned char[2]){(cec_address << 4) | 0,
+                            GET_CEC_VERSION};
+                    Tx.no_of_bytes = 2;
+
+                    message_to_be_sent = 1;
+
+                    break;
+                }
+
+                case SND: {
+                    unsigned char res[] = "SND\r\n";
+
+                    uart_send(res, sizeof(res) / sizeof(unsigned char) - 1);
+
+                    // send 
+                    Tx.bytes =
+                        (unsigned char[3]){(cec_address << 4) | 0,
+                            0x89, 0x01};
+                    Tx.no_of_bytes = 3;
 
                     message_to_be_sent = 1;
 
