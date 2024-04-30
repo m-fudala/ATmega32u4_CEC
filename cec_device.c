@@ -33,6 +33,21 @@ int main()
         if (message_to_be_sent &&
                 (Rx.status.bus_idle_overflow || (TCNT3 > (5 * BIT_TIME)))) {
             message_to_be_sent = 0;
+
+            // buffer used to send debug with transmitted messages
+            // 3 characters at the start, 3 characters for every byte plus
+            // a space and termination at the end
+            unsigned char buffer_tx[3 + Tx.no_of_bytes * 3 + 3];
+
+            sprintf(buffer_tx, "TX:");
+
+            for (unsigned char i = 0; i < Tx.no_of_bytes; ++i) {
+                sprintf(buffer_tx, "%s %02X", buffer_tx, Tx.bytes[i]);
+            }
+
+            sprintf(buffer_tx, "%s\r\n", buffer_tx);
+
+            uart_send(buffer_tx, 3 + Tx.no_of_bytes * 3 + 3 - 1);
             
             send_start();
         }
@@ -49,19 +64,19 @@ int main()
                     && (Rx.status.bytes_read > 1)) {
 
                 // buffer used to send debug with received messages
-                // 4 characters at the start, 3 characters for every byte plus
+                // 3 characters at the start, 3 characters for every byte plus
                 // a space and termination at the end
-                unsigned char buffer[4 + Rx.status.bytes_read * 3 + 3];
+                unsigned char buffer_rx[3 + Rx.status.bytes_read * 3 + 3];
 
-                sprintf(buffer, "Rec:");
+                sprintf(buffer_rx, "RX:");
 
                 for (unsigned char i = 0; i < Rx.status.bytes_read; ++i) {
-                    sprintf(buffer, "%s %02X", buffer, Rx.buffer[i]);
+                    sprintf(buffer_rx, "%s %02X", buffer_rx, Rx.buffer[i]);
                 }
 
-                sprintf(buffer, "%s\r\n", buffer);
+                sprintf(buffer_rx, "%s\r\n", buffer_rx);
 
-                uart_send(buffer, 4 + Rx.status.bytes_read * 3 + 3 - 1);
+                uart_send(buffer_rx, 3 + Rx.status.bytes_read * 3 + 3 - 1);
             }
 
             switch (received_command.opcode) {
@@ -185,7 +200,7 @@ int main()
                     // send Active Source
                     // send static address
                     Tx.bytes =
-                        (unsigned char[4]){(cec_address << 4) | 0,
+                        (unsigned char[4]){(cec_address << 4) | 0xF,
                             ACTIVE_SOURCE, 0x10, 0x00};
                     Tx.no_of_bytes = 4;
 
@@ -220,6 +235,38 @@ int main()
                         (unsigned char[3]){(cec_address << 4) | 0,
                             USER_CONTROL_PRESSED, VOLUME_DOWN};
                     Tx.no_of_bytes = 3;
+
+                    message_to_be_sent = 1;
+
+                    break;
+                }
+
+                case MT: {
+                    unsigned char res[] = "Muting\r\n";
+
+                    uart_send(res, sizeof(res) / sizeof(unsigned char) - 1);
+
+                    // send User Control Mute
+                    Tx.bytes =
+                        (unsigned char[3]){(cec_address << 4) | 0,
+                            USER_CONTROL_PRESSED, MUTE};
+                    Tx.no_of_bytes = 3;
+
+                    message_to_be_sent = 1;
+
+                    break;
+                }
+
+                case OSD: {
+                    unsigned char res[] = "Setting OSD string\r\n";
+
+                    uart_send(res, sizeof(res) / sizeof(unsigned char) - 1);
+
+                    // send Set OSD String
+                    Tx.bytes =
+                        (unsigned char[7]){(cec_address << 4) | 0,
+                            SET_OSD_STRING, 0x0, 'T', 'E', 'S', 'T'};
+                    Tx.no_of_bytes = 7;
 
                     message_to_be_sent = 1;
 
