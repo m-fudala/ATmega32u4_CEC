@@ -15,8 +15,6 @@
 #include "cec_commands.h"
 
 
-void button_press();
-
 int main()
 {
     USBCON = 0;
@@ -80,6 +78,18 @@ int main()
             }
 
             switch (received_command.opcode) {
+                case GIVE_DECK_STATUS: {
+                    // send Play status
+                    Tx.bytes =
+                        (unsigned char[3]){(cec_address << 4) | 0,
+                            DECK_STATUS, 0x20};
+                    Tx.no_of_bytes = 3;
+
+                    message_to_be_sent = 1;
+
+                    break;
+                }
+
                 case GIVE_OSD_NAME: {
                     // set 'TV PC' as OSD name
                     Tx.bytes =
@@ -100,6 +110,34 @@ int main()
                     Tx.no_of_bytes = 5;
 
                     message_to_be_sent = 1;
+
+                    break;
+                }
+
+                case VENDOR_COMMAND: {
+                    switch (Rx.buffer[2]) {
+                        case 0x01: {
+                            Tx.bytes =
+                                (unsigned char[4]){(cec_address << 4) | 0,
+                                    VENDOR_COMMAND, 0x02, 0x05};
+                            Tx.no_of_bytes = 4;
+
+                            message_to_be_sent = 1;
+
+                            break;
+                        }
+
+                        case 0x0B: {
+                            Tx.bytes =
+                                (unsigned char[4]){(cec_address << 4) | 0,
+                                    VENDOR_COMMAND, 0x0C, 0x01};
+                            Tx.no_of_bytes = 4;
+
+                            message_to_be_sent = 1;
+
+                            break;
+                        }
+                    }
 
                     break;
                 }

@@ -4,6 +4,8 @@
 // CEC opcodes
 #define FEATURE_ABORT               0x00
 #define IMAGE_VIEW_ON               0x04
+#define GIVE_DECK_STATUS            0x1A
+#define DECK_STATUS                 0x1B
 #define SET_MENU_LANGUAGE           0x32
 #define STANDBY                     0x36
 #define USER_CONTROL_PRESSED        0x44
@@ -15,6 +17,7 @@
 #define GIVE_PHYSICAL_ADDRESS       0x83
 #define REPORT_PHYSICAL_ADDRESS     0x84
 #define DEVICE_VENDOR_ID            0x87
+#define VENDOR_COMMAND              0x89
 #define GIVE_DEVICE_VENDOR_ID       0x8C
 #define GIVE_DEVICE_POWER_STATUS    0x8F
 #define REPORT_POWER_STATUS         0x90
